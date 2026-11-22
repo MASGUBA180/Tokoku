@@ -1,0 +1,6 @@
+{
+  "name": "TokoKita",
+  "description": "Aplikasi kasir, manajemen barang multi-satuan, stok gudang, dan harga grosir untuk toko.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">TokoKita</string>
+    <string name="auth_title">Masuk ke TokoKita</string>
+    <string name="auth_subtitle">Kelola kasir, harga grosir multi-satuan, stok gudang, dan laporan toko secara sinkron di cloud.</string>
+    <string name="auth_sign_in_google">Masuk dengan Google</string>
+    <string name="auth_loading">Menghubungkan akun…</string>
+    <string name="nav_dashboard">Beranda</string>
+    <string name="nav_pos">Kasir</string>
+    <string name="nav_inventory">Barang</string>
+    <string name="nav_history">Riwayat</string>
+    <string name="action_add_product">Tambah Barang</string>
+    <string name="action_add_price">Tambah Harga</string>
+    <string name="action_submit">Simpan Barang</string>
+    <string name="action_clear_form">Reset Form</string>
+    <string name="action_checkout">Bayar Sekarang</string>
+    <string name="action_sign_out">Keluar Akun</string>
+</resources>

@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "StoreSettings": {
+      "title": "StoreSettings",
+      "description": "Store profile and POS receipt settings for an authenticated store owner.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "storeName": { "type": "string", "description": "Display name of the store." },
+        "storeAddress": { "type": "string", "description": "Store street address." },
+        "storePhone": { "type": "string", "description": "Store phone number." },
+        "receiptFooter": { "type": "string", "description": "Footer message printed on receipts." },
+        "taxPercent": { "type": "number", "description": "Optional tax percentage (0-100)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["userId", "storeName", "storeAddress", "storePhone", "receiptFooter", "taxPercent", "createdAt", "updatedAt"]
+    },
+    "StoreReference": {
+      "title": "StoreReference",
+      "description": "Master reference item for product Categories, Brands, or Units.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "type": { "type": "string", "enum": ["CATEGORY", "BRAND", "UNIT"], "description": "Reference type." },
+        "name": { "type": "string", "description": "Reference label." },
+        "defaultQtyPerUnit": { "type": "integer", "description": "Default base unit multiplier for UNIT references." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": ["userId", "type", "name", "defaultQtyPerUnit", "createdAt", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Store product with cost price, stock level, and multi-unit tiered selling prices.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "sku": { "type": "string", "description": "Barcode or SKU identifier." },
+        "name": { "type": "string", "description": "Product display name." },
+        "categoryName": { "type": "string", "description": "Category name." },
+        "brandName": { "type": "string", "description": "Brand name." },
+        "baseUnitName": { "type": "string", "description": "Smallest stock unit name (e.g., Satuan)." },
+        "costPrice": { "type": "integer", "description": "Current cost price (Harga Pokok)." },
+        "initialCostPrice": { "type": "integer", "description": "Initial cost price (Harga Awal)." },
+        "costAdjustment": { "type": "integer", "description": "Cost price adjustment delta." },
+        "stockBase": { "type": "integer", "description": "Current stock quantity in base units." },
+        "minStockAlert": { "type": "integer", "description": "Low-stock warning threshold in base units." },
+        "defaultPriceUnitIndex": { "type": "integer", "description": "Default unit row index for POS." },
+        "defaultPriceTierType": { "type": "string", "enum": ["DEFAULT", "GROSIR", "MEMBER_VIP"], "description": "Default price tier shown in POS." },
+        "priceUnits": { "type": "array", "description": "Multi-unit selling price tiers (Satuan, Kardus, etc.)." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp on update." }
+      },
+      "required": [
+        "userId", "sku", "name", "categoryName", "brandName", "baseUnitName",
+        "costPrice", "initialCostPrice", "costAdjustment", "stockBase",
+        "minStockAlert", "defaultPriceUnitIndex", "defaultPriceTierType",
+        "priceUnits", "createdAt", "updatedAt"
+      ]
+    },
+    "StockCard": {
+      "title": "StockCard",
+      "description": "Immutable stock movement ledger entry (Kartu Stok Barang).",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "productId": { "type": "string", "description": "Referenced product document ID." },
+        "productName": { "type": "string", "description": "Product name snapshot." },
+        "sku": { "type": "string", "description": "Product SKU snapshot." },
+        "movementType": { "type": "string", "enum": ["MASUK", "KELUAR", "PENYESUAIAN"], "description": "Stock movement direction." },
+        "qtyChange": { "type": "integer", "description": "Signed quantity delta in base units." },
+        "stockBefore": { "type": "integer", "description": "Base stock before movement." },
+        "stockAfter": { "type": "integer", "description": "Base stock after movement." },
+        "unitSummary": { "type": "string", "description": "Human-readable unit summary." },
+        "note": { "type": "string", "description": "Movement reason or receipt reference." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." }
+      },
+      "required": ["userId", "productId", "productName", "sku", "movementType", "qtyChange", "stockBefore", "stockAfter", "unitSummary", "note", "createdAt"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Completed POS sale transaction with line items and profit summary.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner Firebase Auth UID." },
+        "receiptNumber": { "type": "string", "description": "Receipt number." },
+        "customerTier": { "type": "string", "enum": ["DEFAULT", "GROSIR", "MEMBER_VIP"], "description": "Pricing tier applied." },
+        "customerName": { "type": "string", "description": "Customer label." },
+        "paymentMethod": { "type": "string", "enum": ["TUNAI", "QRIS", "TRANSFER"], "description": "Payment method." },
+        "totalAmount": { "type": "integer", "description": "Total charged amount." },
+        "totalCost": { "type": "integer", "description": "Total COGS." },
+        "totalProfit": { "type": "integer", "description": "Gross profit." },
+        "cashPaid": { "type": "integer", "description": "Cash tendered by customer." },
+        "changeAmount": { "type": "integer", "description": "Change returned." },
+        "itemCount": { "type": "integer", "description": "Total line item count." },
+        "items": { "type": "array", "description": "Purchased line items." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp on create." }
+      },
+      "required": ["userId", "receiptNumber", "customerTier", "customerName", "paymentMethod", "totalAmount", "totalCost", "totalProfit", "cashPaid", "changeAmount", "itemCount", "items", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/store_settings/{settingId}": {
+      "schema": { "$ref": "#/entities/StoreSettings" },
+      "description": "Store profile and receipt settings owned by userId."
+    },
+    "/users/{userId}/references/{refId}": {
+      "schema": { "$ref": "#/entities/StoreReference" },
+      "description": "Master categories, brands, and unit definitions owned by userId."
+    },
+    "/users/{userId}/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Product catalog with multi-unit selling price tiers owned by userId."
+    },
+    "/users/{userId}/stock_cards/{cardId}": {
+      "schema": { "$ref": "#/entities/StockCard" },
+      "description": "Immutable stock movement ledger owned by userId."
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Completed POS sales receipts owned by userId."
+    }
+  }
+}

@@ -1,0 +1,207 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidStoreSettings(data, userId) {
+      return data.userId == userId &&
+             data.storeName is string && data.storeName.size() >= 1 && data.storeName.size() <= 80 &&
+             data.storeAddress is string && data.storeAddress.size() <= 200 &&
+             data.storePhone is string && data.storePhone.size() <= 30 &&
+             data.receiptFooter is string && data.receiptFooter.size() <= 200 &&
+             (data.taxPercent is int || data.taxPercent is float) &&
+             data.taxPercent >= 0 && data.taxPercent <= 100 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidStoreReference(data, userId) {
+      return data.userId == userId &&
+             data.type is string && data.type in ['CATEGORY', 'BRAND', 'UNIT'] &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
+             data.defaultQtyPerUnit is int && data.defaultQtyPerUnit >= 1 && data.defaultQtyPerUnit <= 100000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidProduct(data, userId) {
+      return data.userId == userId &&
+             data.sku is string && data.sku.size() >= 1 && data.sku.size() <= 50 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+             data.categoryName is string && data.categoryName.size() <= 60 &&
+             data.brandName is string && data.brandName.size() <= 60 &&
+             data.baseUnitName is string && data.baseUnitName.size() >= 1 && data.baseUnitName.size() <= 30 &&
+             data.costPrice is int && data.costPrice >= 0 &&
+             data.initialCostPrice is int && data.initialCostPrice >= 0 &&
+             data.costAdjustment is int &&
+             data.stockBase is int && data.stockBase >= 0 &&
+             data.minStockAlert is int && data.minStockAlert >= 0 &&
+             data.priceUnits is list && data.priceUnits.size() >= 1 && data.priceUnits.size() <= 10 &&
+             data.priceUnits[0] is map &&
+             data.defaultPriceUnitIndex is int && data.defaultPriceUnitIndex >= 0 && data.defaultPriceUnitIndex < data.priceUnits.size() &&
+             data.defaultPriceTierType is string && data.defaultPriceTierType in ['DEFAULT', 'GROSIR', 'MEMBER_VIP'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidStockCard(data, userId) {
+      return data.userId == userId &&
+             data.productId is string && isValidId(data.productId) &&
+             data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 120 &&
+             data.sku is string && data.sku.size() <= 50 &&
+             data.movementType is string && data.movementType in ['MASUK', 'KELUAR', 'PENYESUAIAN'] &&
+             data.qtyChange is int &&
+             data.stockBefore is int && data.stockBefore >= 0 &&
+             data.stockAfter is int && data.stockAfter >= 0 &&
+             data.unitSummary is string && data.unitSummary.size() <= 80 &&
+             data.note is string && data.note.size() <= 200 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.userId == userId &&
+             data.receiptNumber is string && data.receiptNumber.size() >= 1 && data.receiptNumber.size() <= 40 &&
+             data.customerTier is string && data.customerTier in ['DEFAULT', 'GROSIR', 'MEMBER_VIP'] &&
+             data.customerName is string && data.customerName.size() <= 80 &&
+             data.paymentMethod is string && data.paymentMethod in ['TUNAI', 'QRIS', 'TRANSFER'] &&
+             data.totalAmount is int && data.totalAmount >= 0 &&
+             data.totalCost is int && data.totalCost >= 0 &&
+             data.totalProfit is int &&
+             data.cashPaid is int && data.cashPaid >= 0 &&
+             data.changeAmount is int && data.changeAmount >= 0 &&
+             data.itemCount is int && data.itemCount >= 1 &&
+             data.items is list && data.items.size() >= 1 && data.items.size() <= 100 &&
+             data.items[0] is map &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /users/{userId} {
+      match /store_settings/{settingId} {
+        allow get: if isOwner(userId) && isValidId(settingId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(settingId) &&
+                         incoming().keys().hasAll(['userId', 'storeName', 'storeAddress', 'storePhone', 'receiptFooter', 'taxPercent', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'storeName', 'storeAddress', 'storePhone', 'receiptFooter', 'taxPercent', 'createdAt', 'updatedAt']) &&
+                         isValidStoreSettings(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(settingId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidStoreSettings(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['storeName', 'storeAddress', 'storePhone', 'receiptFooter', 'taxPercent', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(settingId);
+      }
+
+      match /references/{refId} {
+        allow get: if isOwner(userId) && isValidId(refId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(refId) &&
+                         incoming().keys().hasAll(['userId', 'type', 'name', 'defaultQtyPerUnit', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'type', 'name', 'defaultQtyPerUnit', 'createdAt', 'updatedAt']) &&
+                         isValidStoreReference(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(refId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().type == existing().type &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidStoreReference(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['name', 'defaultQtyPerUnit', 'updatedAt']);
+        allow delete: if isOwner(userId) && isValidId(refId);
+      }
+
+      match /products/{productId} {
+        allow get: if isOwner(userId) && isValidId(productId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(productId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'sku', 'name', 'categoryName', 'brandName', 'baseUnitName',
+                           'costPrice', 'initialCostPrice', 'costAdjustment', 'stockBase',
+                           'minStockAlert', 'defaultPriceUnitIndex', 'defaultPriceTierType',
+                           'priceUnits', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'sku', 'name', 'categoryName', 'brandName', 'baseUnitName',
+                           'costPrice', 'initialCostPrice', 'costAdjustment', 'stockBase',
+                           'minStockAlert', 'defaultPriceUnitIndex', 'defaultPriceTierType',
+                           'priceUnits', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidProduct(incoming(), userId);
+        allow update: if isOwner(userId) &&
+                         isValidId(productId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         isValidProduct(incoming(), userId) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'sku', 'name', 'categoryName', 'brandName', 'baseUnitName',
+                           'costPrice', 'initialCostPrice', 'costAdjustment', 'stockBase',
+                           'minStockAlert', 'defaultPriceUnitIndex', 'defaultPriceTierType',
+                           'priceUnits', 'updatedAt'
+                         ]);
+        allow delete: if isOwner(userId) && isValidId(productId);
+      }
+
+      match /stock_cards/{cardId} {
+        allow get: if isOwner(userId) && isValidId(cardId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(cardId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'productId', 'productName', 'sku', 'movementType',
+                           'qtyChange', 'stockBefore', 'stockAfter', 'unitSummary', 'note', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'productId', 'productName', 'sku', 'movementType',
+                           'qtyChange', 'stockBefore', 'stockAfter', 'unitSummary', 'note', 'createdAt'
+                         ]) &&
+                         isValidStockCard(incoming(), userId) &&
+                         existsAfter(/databases/$(database)/documents/users/$(userId)/products/$(incoming().productId));
+        allow update, delete: if false;
+      }
+
+      match /transactions/{transactionId} {
+        allow get: if isOwner(userId) && isValidId(transactionId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) &&
+                         isValidId(transactionId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'receiptNumber', 'customerTier', 'customerName',
+                           'paymentMethod', 'totalAmount', 'totalCost', 'totalProfit',
+                           'cashPaid', 'changeAmount', 'itemCount', 'items', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'receiptNumber', 'customerTier', 'customerName',
+                           'paymentMethod', 'totalAmount', 'totalCost', 'totalProfit',
+                           'cashPaid', 'changeAmount', 'itemCount', 'items', 'createdAt'
+                         ]) &&
+                         isValidTransaction(incoming(), userId);
+        allow update, delete: if false;
+      }
+    }
+  }
+}
